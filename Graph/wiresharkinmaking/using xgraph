@@ -1,0 +1,71 @@
+http://www.xgraph.org/livegraph.html
+Sending Live Data to XGRAPH
+(Driving XGRAPH Interactively through Sockets)
+
+
+To drive XGRAPH interactively from another program via a socket:     (IE. "Live-Plots")
+Start XGraph with the -soc xx option, where xx is the socket your program will send data to XGraph on. Then your program should connect to that socket and send data points to plot over that socket, just as you would write lines to a file. Each line sent to XGraph through the socket must be terminated by a new-line, just as lines in a file would be.
+
+You can send data points as well as most other commands that XGraph normally accepts from files. You can write your client applications in any language, such as C, C++, Java, Python, etc., as long as you can open a socket and write lines of characters to it. (The communications is one-way, and by using TCP/IP there is no hand-shaking needed.)
+
+We provide a working example programs in C-language and Java that you can use. Below are some key points to writing your own client applications to plot through XGraph, using C programs as an example:
+
+In the global-area of your program:
+	#include "soclib.c"
+	Socket_record *soc;
+   
+In the initialization section of your program, open the socket with:
+	soc = Setup_Client_Socket( "", socnum );
+Where socnum is an integer socket number, such as 13330 .
+(Use socket port numbers from 1024 up to 65535.)
+The empty quotes defaults to the your local computer (localhost). Alternately you could specifiy localhost or the IP-address of a remote computer running XGraph.
+Everywhere that you want to write data to XGRAPH, where you would normally write to a graph-file with:
+. . . fprintf( plotfile, "%f %f\n", x, y );
+Replace with:
+	sprintf( message, "%f %f", x, y );
+	Send_Socket( soc, message );
+
+(Note that you can send most any XGRAPH command through the socket
+ that you would normally write to a plot-file, such as:
+	color = 8
+	next
+        annotation 3.0 5.6  Any text you want
+ etc..
+)
+Make sure your program closes the socket after it is done writing everything to XGRAPH, by:
+	Close_Socket( soc );
+Usage:
+
+Invoke XGRAPH, specify the X-and-Y ranges, and the socket number(s) to use. Run it in one window. 
+For example:
+	xgraph -x_range 0 20  -y_range 1 10  -soc 13330
+	
+Invoke your user-application in another window to send data-points on the given socket. For example:
+	livetest.exe 13330
+	
+Notes:
+
+You must tell xgraph the X-Y range of your data-values prior to graphing live data, because xgraph must set the axes-ranges before it sees the data, so that it can display the data as it arrives. A convenient method to set the axes ranges is the -x_range, and -y_range command-line options.
+You can make the graph window pan right at any time via the socket command:   PAN_RIGHT . That is, send this command through the socket to xgraph, as in:
+     send_soc( soc, "PAN_RIGHT\n" );
+This has the same effect as clicking the Pan Right button interactively. It is convenient for causing the graph to scroll horizontally as data arrives.
+If your application dies before closing the socket, the socket will automatically close anyway. But depending on your OS, it may take a few minutes before that socket number becomes available again.
+A given user-program can drive multiple XGRAPH displays. Make sure to use a distinct "socket" number and pointer for each graph.
+Conversely, multiple applications can write to a common graph. For example, to the same graph, open multiple sockets:
+	xgraph -x_range 0 2 -y_range 1 9 -soc 13330 -soc 13331  & 
+There is a simple example-test program, called: - livetest.c
+You can download it (right-click) and try it. Compile it with:
+   	cc livetest.c -lm -o livetest.exe
+Try it by:
+	xgraph -pl -x_range 0 100 -y_range 0 1 -soc 13330 &
+        livetest.exe 13330
+You can download the soc_lib.h and soc_lib.c for C-programs from soclib.h, and soclib.c. Or the following zip file contains all the C-code source files plus compiled executables for Linux and Microsoft, all for your convenience and testing: soclib.tgz or soclib.zip.
+There is also a simple Java example-test program, called: - livetest.java
+You can download it (right-click) and try it. Compile it with:
+   	javac livetest.java 
+Try it by:
+	xgraph -pl -x_range 0 100 -y_range 0 1 -soc 13330 &
+        java livetest 13330
+You can download the Java example from soc_example_java.zip.
+
+

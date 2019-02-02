@@ -1,0 +1,50 @@
+The Length/EtherType field is the only one which differs between 802.3 and Ethernet II. In 802.3 it indicates the number of bytes of data in the frame�s payload, and can be anything from 0 to 1500 bytes. Frames must be at least 64 bytes long, not including the preamble, so, if the data field is shorter than 46 bytes, it must be compensated by the Pad field. The reason for specifying a minimum length lies with the collision-detect mechanism. In CSMA/CD a station must never be allowed to believe it has transmitted a frame successfully if that frame has, in fact, experienced a collision. In the worst case it takes twice the maximum propagation delay across the network before a station can be sure that a transmission has been successful. If a station sends a really short frame, it may actually finish sending and release the Ether without realising that a collision has occurred. The 802.3 design rules specify an upper limit on the maximum propagation delay in any Ethernet installation, and the minimum frame size is set to be more than twice this figure (64 bytes takes 51.2ms to send at 10Mbps).
+
+In Ethernet II, on the other hand, this field is used to indicate the type of payload carried by the frame. For example 0800 signifies an IP payload. In fact the smallest legal value of this field is 0600, and since the greatest value of the 802.3 Length is 05DC it is always possible to tell Ethernet and 802.3 frames apart and they can therefore coexist on the same network. 802.3 was intended to be used with 802.2 LLC as its standard payload, the latter using a 7-bit subaddress to specify protocol type. However, this is not compatible with the 16-bit EtherType of Ethernet II, so the SNAP (Subnetwork Access Protocol) extension was developed. With a SNAP-extended header, an LLC PDU can carry a 16-bit EtherType.
+
+
+
+ The IP header, unlike the Ethernet header, does not have a fixed length; its length is given, as a count of 4-byte words, by the header length field of the IP header. As it's a count of 4-byte words, it must be multiplied by 4 to give the size in bytes. The minimum length of that header is 20 bytes.
+
+The TCP header also has a variable length; its length is given, as a number of 4-byte words, by the "data offset" field of the TCP header, and its minimum length is also 20 bytes.
+
+
+
+
+The <sys/time.h> header defines the timeval structure that includes at least the following members:
+
+time_t         tv_sec      seconds
+suseconds_t    tv_usec     microseconds
+
+
+ether_header
+#include <netinet/if_ether.h>
+typedef struct ether_header {
+u_char  ether_dhost[6];     
+u_char  ether_shost[6];     
+u_short ether_type;         
+}ETHERHDR;
+
+
+
+
+ the "to_ms" argument to pcap_open_live.  Here is how it is used:
+
+      1. With a positive timeout (initialized by the to_ms value on each
+         call to pcap_read), a "read" will return if either
+         a. enough polls have been called to exhaust the timeout value,
+            or
+         b. the timeout expires even if no packets have been received. 
+      2. With a zero timeout, a "pcap_read" will never return. The timeout is
+         considered infinite. Of course callbacks will continue for each packet
+         that arrives.  And the PCAP_TIMEOUT environment variable can be used
+         to signal an error of ETIMEDOUT.
+      3. With a value of -1, "pcap_read" will return if either
+         a. there are no packets on the ring,
+            or
+         b. the packets that have been queued on the ring have all been
+            processed. In otherwords, it is non-blocking. The recommended
+            'non blocking' mechanism is to use 'pcap_setnonblock' and
+            'pcap_getnonblock' to set/unset or retrieve the blocking/nonblocking
+             state. In otherwords, calling pcap_setnonblock is equivalent to
+             calling pcap_open_live with to_ms == -1. 

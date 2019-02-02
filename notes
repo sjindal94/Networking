@@ -1,0 +1,100 @@
+http://www.tcpdump.org/manpages/pcap.3pcap.html
+
+pcap_lookupdev() is one of those routines; if it returns NULL, that means it didn't find any device that it could open, so it puts an error message into errbuf.
+
+A pcap_t is a handle used to read packets from a network interface, or from a pcap (or, in newer versions of libpcap, pcap-ng) file containing packets. libpcap/WinPcap routines such as pcap_open_live() and pcap_open_offline() return a pcap_t from which you can read packets with routines such as pcap_loop(), pcap_dispatch(), pcap_next(), and pcap_next_ex(); in newer versions of libpcap (but not yet in WinPcap), you can also get a pcap_t by calling pcap_create(), set various options on that pcap_t, and then "activate" it, making it available to capture on, with pcap_activate().
+
+
+a device is a network interface, such as eth0 or wlan0 on a Linux machine
+
+
+pcap_t *pcap_open_live(char *device, int snaplen, int promisc, int to_ms, char *ebuf)
+snaplen=max no of bytes to be captured
+promisc=when true interface is in promiscious mode
+to_ms=read timeout in millisec
+(a value of 0 means no time out; on at least some platforms, this means that you may wait until a sufficient number of packets arrive before seeing any packets, so you should use a non-zero timeout). , ebuf=string to store any error messages within.
+BUFSIZ=8196
+
+
+
+A note about promiscuous vs. non-promiscuous sniffing: The two techniques are very different in style. In standard, non-promiscuous sniffing, a host is sniffing only traffic that is directly related to it. Only traffic to, from, or routed through the host will be picked up by the sniffer. Promiscuous mode, on the other hand, sniffs all traffic on the wire. In a non-switched environment, this could be all network traffic. The obvious advantage to this is that it provides more packets for sniffing, which may or may not be helpful depending on the reason you are sniffing the network. However, there are regressions. Promiscuous mode sniffing is detectable; a host can test with strong reliability to determine if another host is doing promiscuous sniffing. Second, it only works in a non-switched environment (such as a hub, or a switch that is being ARP flooded). Third, on high traffic networks, the host can become quite taxed for system resources.
+
+
+
+Not all devices provide the same type of link-layer headers in the packets you read. Ethernet devices, and some non-Ethernet devices, might provide Ethernet headers, but other device types, such as loopback devices in BSD and OS X, PPP interfaces, and Wi-Fi interfaces when capturing in monitor mode, don't.
+You need to determine the type of link-layer headers the device provides, and use that type when processing the packet contents. The pcap_datalink() routine returns a value indicating the type of link-layer headers; see the list of link-layer header type values. The values it returns are the DLT_ values in that list.
+
+
+
+Before applying our filter, we must "compile" it. The filter expression is kept in a regular string (char array).To compile the program we call pcap_compile(). The prototype defines it as:
+	int pcap_compile(pcap_t *p, struct bpf_program *fp, char *str, int optimize, bpf_u_int32 netmask)
+The function returns -1 on failure; all other values imply success.
+
+
+
+
+The filter expression consists of one or more primitives. Primitives usually consist of an id (name or number) preceded by one or more qualifiers. There are three different kinds of qualifier:
+
+type
+type qualifiers say what kind of thing the id name or number refers to. Possible types are host, net , port and portrange. E.g., `host foo', `net 128.3', `port 20', `portrange 6000-6008'. If there is no type qualifier, host is assumed.
+dir
+dir qualifiers specify a particular transfer direction to and/or from id. Possible directions are src, dst, src or dst, src and dst, ra, ta, addr1, addr2, addr3, and addr4. E.g., `src foo', `dst net 128.3', `src or dst port ftp-data'. If there is no dir qualifier, src or dst is assumed. The ra, ta, addr1, addr2, addr3, and addr4 qualifiers are only valid for IEEE 802.11 Wireless LAN link layers. For some link layers, such as SLIP and the ``cooked'' Linux capture mode used for the ``any'' device and for some other device types, the inbound and outbound qualifiers can be used to specify a desired direction.
+proto
+proto qualifiers restrict the match to a particular protocol. Possible protos are: ether, fddi, tr, wlan, ip, ip6, arp, rarp, decnet, tcp and udp. E.g., `ether src foo', `arp net 128.3', `tcp port 21', `udp portrange 7000-7009', `wlan addr2 0:2:3:4:5:6'. If there is no proto qualifier, all protocols consistent with the type are assumed. E.g., `src foo' means `(ip or arp or rarp) src foo' (except the latter is not legal syntax), `net bar' means `(ip or arp or rarp) net bar' and `port 53' means `(tcp or udp) port 53'.
+
+
+
+
+
+
+After the expression has been compiled, it is time to apply it. Enter pcap_setfilter(). Following our format of explaining pcap, we shall look at the pcap_setfilter() prototype:
+	int pcap_setfilter(pcap_t *p, struct bpf_program *fp)
+
+
+
+pcap_lookupnet() is a function that, given the name of a device, returns one of its IPv4 network numbers and corresponding network mask (the network number is the IPv4 address ANDed with the network mask, so it contains only the network part of the address).
+
+
+
+const u_char *pcap_next(pcap_t *p, struct pcap_pkthdr *h);
+pcap_next() reads the next packet (by calling pcap_dispatch() with a cnt of 1) and returns a u_char pointer to the data in that packet. The packet data is not to be freed by the caller, and is not guaranteed to be valid after the next call to pcap_next_ex(), pcap_next(), pcap_loop(), or pcap_dispatch(); if the code needs it to remain valid, it must make a copy of it. The pcap_pkthdr structure pointed to by h is filled in with the appropriate values for the packet.The second argument is a pointer to a structure that holds general information about the packet, specifically the time in which it was sniffed, the length of this packet, and the length of his specific portion (incase it is fragmented, for example.)
+
+
+
+There are two main techniques for capturing packets. We can either capture a single packet at a time, or we can enter a loop that waits for n number of packets to be sniffed before being done. We will begin by looking at how to capture a single packet, then look at methods of using loops. For this we use pcap_next().
+
+The prototype for pcap_next() is fairly simple:
+
+	u_char *pcap_next(pcap_t *p, struct pcap_pkthdr *h)
+The first argument is our session handler. The second argument is a pointer to a structure that holds general information about the packet, specifically the time in which it was sniffed, the length of this packet, and the length of his specific portion (incase it is fragmented, for example.) pcap_next() returns a u_char pointer to the packet that is described by this structure.
+
+
+
+pcap_loop() and pcap_dispatch() are very similar in their usage of callbacks. Both of them call a callback function every time a packet is sniffed that meets our filter requirements (if any filter exists, of course. If not, then all packets that are sniffed are sent to the callback.)The prototype for pcap_loop() is below:
+	int pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
+	
+The first argument is our session handle. Following that is an integer that tells pcap_loop() how many packets it should sniff for before returning (a negative value means it should sniff until an error occurs). The third argument is the name of the callback function (just its identifier, no parentheses). The last argument is useful in some applications, but many times is simply set as NULL. Suppose we have arguments of our own that we wish to send to our callback function, in addition to the arguments that pcap_loop() sends. This is where we do it.
+The only difference between pcap_dispatch() and pcap_loop() is that pcap_dispatch() will only process the first batch of packets that it receives from the system, while pcap_loop() will continue processing packets or batches of packets until the count of packets runs out.
+
+
+ we use this format as the prototype for our callback function:
+	void got_packet(u_char *args, const struct pcap_pkthdr *header,
+	    const u_char *packet);
+	    
+First, you'll notice that the function has a void return type. This is logical, because pcap_loop() wouldn't know how to handle a return value anyway. The first argument corresponds to the last argument of pcap_loop(). Whatever value is passed as the last argument to pcap_loop() is passed to the first argument of our callback function every time the function is called. The second argument is the pcap header, which contains information about when the packet was sniffed, how large it is, etc. The pcap_pkthdr structure is defined in pcap.h as:
+
+	struct pcap_pkthdr {
+		struct timeval ts; /* time stamp */
+		bpf_u_int32 caplen; /* length of portion present */
+		bpf_u_int32 len; /* length this packet (off wire) */
+	};
+These values should be fairly self explanatory. The last argument is the most interesting of them all, and the most confusing to the average novice pcap programmer. It is another pointer to a u_char, and it points to the first byte of a chunk of data containing the entire packet, as sniffed by pcap_loop().
+
+
+
+
+
+pcap_freecode()  is  used  to  free up allocated memory pointed to by a bpf_program struct generated by pcap_compile() when that BPF program is no longer needed, for example after it has been made the filter program for a pcap structure by a call to pcap_setfilter().
+
+pcap_close()  closes  the  files  associated  with  p  and  deallocates resources.
+

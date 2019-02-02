@@ -1,0 +1,50 @@
+! Example XGRAPH Test File
+/* Prepared by Newell Stacey 1996 */
+Title = Test Graph
+thickness = 2
+-2 -2
+16 7
+next
+-2 -2
+16 -2
+next
+-2 -2
+-2 7
+next
+title_x = Horizontal Axis
+title_y = Vertical Axis
+-1 -1
+-1 6
+15 6
+15 -1
+-1 -1
+next
+0 5
+2 5
+1 5
+anno 6 3 This is an annotation.
+1 0
+text 4 4
+  This is an example of a text 
+  block in the middle of a data file.
+end_text
+next
+6 5
+4 5
+4 2.5
+6 2.5
+4 2.5
+4 0
+6 0
+next
+10 5
+8 5
+8 3
+10 2
+10 0
+8 0
+next
+12 5
+14 5
+13 5
+13 0
